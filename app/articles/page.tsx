@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { ArticleCard, Article } from "@/components/article-card";
+import { ArticleCard } from "@/components/article-card";
 import { Loader2 } from "lucide-react";
+import { Article } from "@/lib/mock-articles";
 
 export default function ArticlesPage() {
   const {

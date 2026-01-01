@@ -9,6 +9,7 @@ export interface Article {
   image: string;
   date: string;
   readTime: number;
+  content?: string;
 }
 
 interface ArticleCardProps {
