@@ -4,7 +4,6 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock } from "lucide-react";
-import { generateArticles } from "@/lib/mock-articles";
 import { MDXRenderer } from "@/components/mdx-renderer";
 import { useEffect, useState } from "react";
 
@@ -26,24 +25,30 @@ export default function ArticleDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const id = parseInt(params.id as string, 10);
-      
-      // 模拟从 API 获取文章
-      // 实际应用中应该调用真实的 API
-      const allArticles = generateArticles(Math.ceil(id / 12), 12);
-      const foundArticle = allArticles.find((a) => a.id === id);
-
-      if (foundArticle) {
-        setArticle(foundArticle);
-      } else {
-        setError("文章不存在");
+    const fetchArticle = async () => {
+      try {
+        const id = params.id as string;
+        const response = await fetch(`/api/articles/${id}`);
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError("文章不存在");
+          } else {
+            setError("加载文章失败");
+          }
+          return;
+        }
+        
+        const data = await response.json();
+        setArticle(data);
+      } catch (err) {
+        setError("加载文章失败");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError("加载文章失败");
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    fetchArticle();
   }, [params.id]);
 
   if (loading) {

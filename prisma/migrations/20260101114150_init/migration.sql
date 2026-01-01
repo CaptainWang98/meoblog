@@ -1,0 +1,12 @@
+-- CreateTable
+CREATE TABLE "articles" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "title" TEXT NOT NULL,
+    "excerpt" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "image" TEXT NOT NULL,
+    "date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "readTime" INTEGER NOT NULL DEFAULT 5,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
