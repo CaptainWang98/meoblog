@@ -196,7 +196,7 @@ async function syncSinglePage(pageId: string) {
     return { status: "skipped", reason: "Not published" };
   }
 
-  // 获取封面
+  // 获取封面（从页面自带的 cover 获取）
   let image = "";
   if (page.cover) {
     const coverUrl = page.cover.type === "file" 
@@ -204,12 +204,6 @@ async function syncSinglePage(pageId: string) {
       : page.cover.external?.url || "";
     if (coverUrl) {
       image = await downloadCoverImage(coverUrl, pageId);
-    }
-  }
-  if (!image) {
-    const coverProp = getPropertyValue(page.properties.Cover) as string;
-    if (coverProp) {
-      image = await downloadCoverImage(coverProp, pageId);
     }
   }
   if (!image) {

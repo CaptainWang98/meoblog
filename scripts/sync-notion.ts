@@ -238,7 +238,7 @@ async function syncNotionArticles() {
       
       console.log(`📖 同步文章: ${title}`);
 
-      // 获取并处理封面图片
+      // 获取封面（从页面自带的 cover 获取）
       let image = "";
       if (page.cover) {
         const coverUrl = page.cover.type === "file" 
@@ -246,12 +246,6 @@ async function syncNotionArticles() {
           : page.cover.external?.url || "";
         if (coverUrl) {
           image = await downloadCoverImage(coverUrl, notionPageId);
-        }
-      }
-      if (!image) {
-        const coverProp = getPropertyValue(page.properties.Cover) as string;
-        if (coverProp) {
-          image = await downloadCoverImage(coverProp, notionPageId);
         }
       }
       if (!image) {
