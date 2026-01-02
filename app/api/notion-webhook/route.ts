@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "crypto";
 import { notion, NOTION_DATABASE_ID, getPropertyValue, estimateReadTime, NotionBlock } from "@/lib/notion";
 import { 
   downloadImage, 
@@ -9,7 +10,9 @@ import {
 } from "@/lib/image-storage";
 import { prisma } from "@/lib/prisma";
 
-// Webhook 密钥验证（可选但推荐）
+// Notion Webhook verification token（从 Notion Integration 设置中获取）
+const NOTION_VERIFICATION_TOKEN = process.env.NOTION_VERIFICATION_TOKEN;
+// 手动触发时使用的密钥（可选）
 const WEBHOOK_SECRET = process.env.NOTION_WEBHOOK_SECRET;
 
 interface NotionPage {
@@ -292,9 +295,99 @@ async function syncAllPages() {
   return results;
 }
 
-// POST: 触发同步（支持单页或全量）
+/**
+ * 验证 Notion Webhook 签名
+ */
+function verifyNotionSignature(body: string, signature: string | null): boolean {
+  if (!NOTION_VERIFICATION_TOKEN || !signature) {
+    return false;
+  }
+
+  const expectedSignature = `sha256=${createHmac("sha256", NOTION_VERIFICATION_TOKEN)
+    .update(body)
+    .digest("hex")}`;
+
+  try {
+    return timingSafeEqual(
+      Buffer.from(expectedSignature),
+      Buffer.from(signature)
+    );
+  } catch {
+    return false;
+  }
+}
+
+// Notion Webhook 事件类型
+interface NotionWebhookEvent {
+  type: string;
+  verification_token?: string; // 首次验证时的 token
+  entity?: {
+    id: string;
+    type: string;
+  };
+  data?: Record<string, unknown>;
+  timestamp?: string;
+}
+
+// POST: 接收 Notion Webhook 事件 或 手动触发同步
 export async function POST(request: NextRequest) {
-  // 验证密钥（可选）
+  const rawBody = await request.text();
+  let body: NotionWebhookEvent & { pageId?: string; syncAll?: boolean };
+  
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  // 1. 处理 Notion Webhook 验证请求（首次设置时）
+  if (body.verification_token) {
+    console.log("🔐 Notion Webhook 验证请求，verification_token:", body.verification_token);
+    // 返回成功，让你可以在 Notion Integration 设置中输入这个 token
+    return NextResponse.json({ 
+      success: true, 
+      message: "Verification token received. Please save it to NOTION_VERIFICATION_TOKEN env var.",
+      verification_token: body.verification_token 
+    });
+  }
+
+  // 2. 验证 Notion Webhook 签名（如果已配置）
+  const notionSignature = request.headers.get("x-notion-signature");
+  if (notionSignature && NOTION_VERIFICATION_TOKEN) {
+    if (!verifyNotionSignature(rawBody, notionSignature)) {
+      console.error("❌ Notion Webhook 签名验证失败");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+    console.log("✅ Notion Webhook 签名验证成功");
+  }
+
+  // 3. 处理 Notion Webhook 事件
+  if (body.type && body.entity) {
+    console.log(`📨 收到 Notion 事件: ${body.type}, entity: ${body.entity.type} ${body.entity.id}`);
+    
+    // 只处理页面内容更新事件
+    if (body.type === "page.content_updated" || body.type === "page.properties_updated") {
+      try {
+        const result = await syncSinglePage(body.entity.id);
+        return NextResponse.json({
+          success: true,
+          message: "Page synced from webhook",
+          ...result,
+        });
+      } catch (error) {
+        console.error("Webhook sync error:", error);
+        return NextResponse.json(
+          { error: "Sync failed", details: String(error) },
+          { status: 500 }
+        );
+      }
+    }
+
+    // 其他事件类型，直接返回成功
+    return NextResponse.json({ success: true, message: `Event ${body.type} acknowledged` });
+  }
+
+  // 4. 手动触发同步（使用 WEBHOOK_SECRET 验证）
   if (WEBHOOK_SECRET) {
     const authHeader = request.headers.get("authorization");
     if (authHeader !== `Bearer ${WEBHOOK_SECRET}`) {
@@ -306,7 +399,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json().catch(() => ({}));
     const { pageId, syncAll } = body as { pageId?: string; syncAll?: boolean };
 
     if (syncAll || !pageId) {
