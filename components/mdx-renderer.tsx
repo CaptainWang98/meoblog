@@ -1,6 +1,5 @@
 "use client";
 
-import { useMDXComponent } from "next-mdx-remote/rsc";
 import { ReactNode } from "react";
 
 interface MDXComponentProps {

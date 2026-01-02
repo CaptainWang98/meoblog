@@ -10,15 +10,40 @@ datasource db {
 
 // Article model
 model Article {
-  id        Int     @id @default(autoincrement())
-  title     String
-  excerpt   String
-  content   String  // MDX content
-  image     String
-  date      DateTime @default(now())
-  readTime  Int     @default(5)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  notionPageId  String?  @unique // Notion 页面 ID，用于同步去重
+  title         String
+  excerpt       String
+  content       String   // Notion blocks JSON (不再是 MDX)
+  contentType   String   @default("mdx") // "mdx" | "notion"
+  image         String
+  date          DateTime @default(now())
+  readTime      Int      @default(5)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  notionLastEditedAt DateTime? // Notion 最后编辑时间，用于增量同步
+  images        NotionImage[] // 关联的图片
 
   @@map("articles")
+}
+
+// 用于缓存 Notion 图片的表
+model NotionImage {
+  id              Int      @id @default(autoincrement())
+  notionBlockId   String   @unique // Notion 块 ID（图片块的唯一标识）
+  notionUrl       String   // 原始 Notion 图片 URL（会过期）
+  localPath       String   // 本地存储路径
+  fileName        String   // 文件名
+  mimeType        String   // MIME 类型
+  size            Int      // 文件大小（字节）
+  width           Int?     // 图片宽度
+  height          Int?     // 图片高度
+  articleId       Int?     // 关联的文章 ID
+  article         Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  lastSyncedAt    DateTime // 最后同步时间
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([articleId])
+  @@map("notion_images")
 }

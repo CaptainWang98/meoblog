@@ -2,9 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock } from "lucide-react";
 import { MDXRenderer } from "@/components/mdx-renderer";
+import { NotionRenderer } from "@/components/notion-renderer";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import { NotionBlock } from "@/lib/notion";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -112,7 +114,11 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 
         {/* Article Content */}
         <div className="prose prose-sm sm:prose-base max-w-none dark:prose-invert">
-          <MDXRenderer content={article.content} />
+          {article.contentType === "notion" ? (
+            <NotionRenderer blocks={JSON.parse(article.content) as NotionBlock[]} />
+          ) : (
+            <MDXRenderer content={article.content} />
+          )}
         </div>
 
         {/* Article Footer */}
