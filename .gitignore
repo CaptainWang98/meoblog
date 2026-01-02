@@ -40,4 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma
 /lib/generated/prisma
+/prisma/*.db
+/prisma/*.db-journal
+
+# notion uploads (synced images)
+/public/uploads/notion/
