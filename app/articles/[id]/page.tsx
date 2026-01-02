@@ -1,95 +1,72 @@
-"use client";
-
-import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Clock } from "lucide-react";
 import { MDXRenderer } from "@/components/mdx-renderer";
-import { useEffect, useState } from "react";
+import { prisma } from "@/lib/prisma";
+import { notFound } from "next/navigation";
+import { Metadata } from "next";
 
-interface Article {
-  id: number;
-  title: string;
-  excerpt: string;
-  image: string;
-  date: string;
-  readTime: number;
-  content: string;
+interface PageProps {
+  params: Promise<{ id: string }>;
 }
 
-export default function ArticleDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const [article, setArticle] = useState<Article | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchArticle = async () => {
-      try {
-        const id = params.id as string;
-        const response = await fetch(`/api/articles/${id}`);
-        
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError("文章不存在");
-          } else {
-            setError("加载文章失败");
-          }
-          return;
-        }
-        
-        const data = await response.json();
-        setArticle(data);
-      } catch (err) {
-        setError("加载文章失败");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchArticle();
-  }, [params.id]);
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-12">
-          <div className="animate-pulse space-y-4">
-            <div className="h-64 bg-muted rounded-lg" />
-            <div className="h-8 bg-muted rounded w-3/4" />
-            <div className="h-4 bg-muted rounded w-1/2" />
-          </div>
-        </div>
-      </main>
-    );
+// 生成动态 metadata（SEO）
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const articleId = parseInt(id, 10);
+  
+  if (isNaN(articleId)) {
+    return { title: "文章不存在" };
   }
 
-  if (error || !article) {
-    return (
-      <main className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-12">
-          <div className="text-center">
-            <p className="text-lg text-destructive mb-4">{error || "文章不存在"}</p>
-            <Link
-              href="/articles"
-              className="inline-flex items-center gap-2 text-primary hover:underline"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              返回文章列表
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
+  const article = await prisma.article.findUnique({
+    where: { id: articleId },
+    select: { title: true, excerpt: true, image: true },
+  });
+
+  if (!article) {
+    return { title: "文章不存在" };
   }
+
+  return {
+    title: article.title,
+    description: article.excerpt,
+    openGraph: {
+      title: article.title,
+      description: article.excerpt,
+      images: [article.image],
+    },
+  };
+}
+
+export default async function ArticleDetailPage({ params }: PageProps) {
+  const { id } = await params;
+  const articleId = parseInt(id, 10);
+
+  if (isNaN(articleId)) {
+    notFound();
+  }
+
+  const article = await prisma.article.findUnique({
+    where: { id: articleId },
+  });
+
+  if (!article) {
+    notFound();
+  }
+
+  const formattedDate = article.date.toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <main className="min-h-screen bg-background">
       {/* Back Button */}
       <div className="container mx-auto px-4 py-4">
         <Link
-          href="/articles"
+          href="/"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -118,7 +95,7 @@ export default function ArticleDetailPage() {
           <div className="flex flex-wrap items-center gap-6 text-muted-foreground">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              <time dateTime={article.date}>{article.date}</time>
+              <time dateTime={article.date.toISOString()}>{formattedDate}</time>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
@@ -142,10 +119,10 @@ export default function ArticleDetailPage() {
         <div className="border-t border-border mt-12 pt-8">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="text-sm text-muted-foreground">
-              最后更新于 {article.date}
+              最后更新于 {formattedDate}
             </div>
             <Link
-              href="/articles"
+              href="/"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
