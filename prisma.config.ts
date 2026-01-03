@@ -25,8 +25,9 @@ function getDatabaseUrl(): string {
     return url;
   }
   
-  // 本地开发回退（需要配置环境变量）
-  throw new Error("DATABASE_URL or PGHOST/PGUSER/PGPASSWORD must be set for Prisma CLI");
+  // 返回一个占位符 URL，用于 prisma generate（不需要真正连接）
+  // prisma generate 只需要 schema，不需要数据库连接
+  return "postgresql://placeholder:placeholder@localhost:5432/placeholder";
 }
 
 export default defineConfig({
