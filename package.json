@@ -15,6 +15,9 @@
     "sync:notion": "tsx scripts/sync-notion.ts"
   },
   "dependencies": {
+    "@aws-sdk/credential-providers": "^3.962.0",
+    "@aws-sdk/rds-signer": "^3.962.0",
+    "@aws-sdk/types": "^3.957.0",
     "@bprogress/next": "^3.2.12",
     "@mdx-js/mdx": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
@@ -22,6 +25,8 @@
     "@prisma/adapter-pg": "^7.2.0",
     "@radix-ui/react-navigation-menu": "^1.2.14",
     "@tanstack/react-query": "^5.90.16",
+    "@vercel/functions": "^3.3.4",
+    "@vercel/oidc-aws-credentials-provider": "^3.0.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.562.0",

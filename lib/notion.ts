@@ -5,7 +5,7 @@ import { Client } from "@notionhq/client";
 // NOTION_DATABASE_ID: Notion 文章数据库 ID
 
 if (!process.env.NOTION_API_KEY) {
-  console.warn("Warning: NOTION_API_KEY is not set");
+  console.error("Error: NOTION_API_KEY is not set");
 }
 
 export const notion = new Client({

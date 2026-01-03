@@ -1,13 +1,34 @@
 import { PrismaClient } from "../lib/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { fromEnv } from "@aws-sdk/credential-providers";
+import {
+  getDatabaseConfig,
+  createStandardAdapter,
+  AwsRdsIamConfig,
+  DatabaseAdapter,
+} from "../lib/database/adapter";
+import { createAwsRdsIamAdapter } from "../lib/database/aws-rds";
 
-// 创建 PostgreSQL 连接池和 Prisma 客户端
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+/**
+ * 创建数据库适配器（CLI 脚本使用环境变量凭证）
+ */
+function createCliAdapter(): DatabaseAdapter {
+  const { type, config } = getDatabaseConfig();
+
+  switch (type) {
+    case "aws-rds-iam": {
+      const rdsConfig = config as AwsRdsIamConfig;
+      const credentials = fromEnv();
+      return createAwsRdsIamAdapter(rdsConfig, credentials);
+    }
+    case "aws-rds-password":
+    case "standard":
+    default:
+      return createStandardAdapter(config);
+  }
+}
+
+const dbAdapter = createCliAdapter();
+const prisma = new PrismaClient({ adapter: dbAdapter.getPrismaAdapter() });
 
 const articles = [
   {

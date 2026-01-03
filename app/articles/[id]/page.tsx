@@ -8,6 +8,9 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { NotionBlock } from "@/lib/notion";
 
+// 使用动态渲染，在运行时获取数据库数据
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }

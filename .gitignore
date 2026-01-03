@@ -47,3 +47,4 @@ next-env.d.ts
 
 # notion uploads (synced images)
 /public/uploads/notion/
+.env*.local
