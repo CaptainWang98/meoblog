@@ -117,11 +117,16 @@ async function runMigrations() {
           [migrationId, generateChecksum(sql), migration]
         );
 
-        // 执行迁移 SQL（按语句分割执行）
-        const statements = sql
+        // 执行迁移 SQL（先移除注释行，再按分号分割执行）
+        const cleanSql = sql
+          .split("\n")
+          .filter((line) => !line.trim().startsWith("--"))
+          .join("\n");
+        
+        const statements = cleanSql
           .split(";")
           .map((s) => s.trim())
-          .filter((s) => s.length > 0 && !s.startsWith("--"));
+          .filter((s) => s.length > 0);
 
         for (const statement of statements) {
           await pool.query(statement);
