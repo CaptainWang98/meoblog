@@ -3,11 +3,17 @@ import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 /**
- * 检测是否可以使用 AWS RDS IAM 认证
- * 通过检测 VERCEL_OIDC_TOKEN 环境变量来判断
- * 这样无论是在 Vercel 部署环境还是本地使用 `vercel env pull` 拉取的环境变量都能工作
+ * 检测是否在 Vercel 环境中
+ * VERCEL 环境变量在 Vercel 构建和运行时都会设置
  */
-const canUseOidc = !!process.env.VERCEL_OIDC_TOKEN;
+const isVercel = !!process.env.VERCEL;
+
+/**
+ * 检测是否可以使用 AWS RDS IAM 认证
+ * - 在 Vercel 部署环境中，OIDC token 通过请求头传递，这里检测 VERCEL 环境变量
+ * - 在本地开发时，使用 `vercel env pull` 拉取的 VERCEL_OIDC_TOKEN
+ */
+const canUseOidc = isVercel || !!process.env.VERCEL_OIDC_TOKEN;
 
 // 全局单例
 const globalForPrisma = global as unknown as { 

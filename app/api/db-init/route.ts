@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/lib/generated/prisma/client";
 
 /**
  * 数据库初始化端点
@@ -22,9 +23,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // 创建 articles 表
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "articles" (
+    // 使用单独的 SQL 语句，避免多语句执行问题
+    const statements = [
+      // 创建 articles 表
+      `CREATE TABLE IF NOT EXISTS "articles" (
         "id" SERIAL NOT NULL,
         "notionPageId" TEXT,
         "title" TEXT NOT NULL,
@@ -38,18 +40,13 @@ export async function POST(request: NextRequest) {
         "updatedAt" TIMESTAMP(3) NOT NULL,
         "notionLastEditedAt" TIMESTAMP(3),
         CONSTRAINT "articles_pkey" PRIMARY KEY ("id")
-      )
-    `);
-
-    // 创建 articles 的唯一索引
-    await prisma.$executeRawUnsafe(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "articles_notionPageId_key" 
-      ON "articles"("notionPageId")
-    `);
-
-    // 创建 notion_images 表
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "notion_images" (
+      )`,
+      
+      // 创建 articles 的唯一索引
+      `CREATE UNIQUE INDEX IF NOT EXISTS "articles_notionPageId_key" ON "articles"("notionPageId")`,
+      
+      // 创建 notion_images 表
+      `CREATE TABLE IF NOT EXISTS "notion_images" (
         "id" SERIAL NOT NULL,
         "notionBlockId" TEXT NOT NULL,
         "notionUrl" TEXT NOT NULL,
@@ -64,35 +61,32 @@ export async function POST(request: NextRequest) {
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL,
         CONSTRAINT "notion_images_pkey" PRIMARY KEY ("id")
-      )
-    `);
+      )`,
+      
+      // 创建 notion_images 的索引
+      `CREATE UNIQUE INDEX IF NOT EXISTS "notion_images_notionBlockId_key" ON "notion_images"("notionBlockId")`,
+      `CREATE INDEX IF NOT EXISTS "notion_images_articleId_idx" ON "notion_images"("articleId")`,
+    ];
 
-    // 创建 notion_images 的索引
-    await prisma.$executeRawUnsafe(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "notion_images_notionBlockId_key" 
-      ON "notion_images"("notionBlockId")
-    `);
+    // 逐条执行 SQL
+    for (const sql of statements) {
+      await prisma.$executeRawUnsafe(sql);
+    }
 
-    await prisma.$executeRawUnsafe(`
-      CREATE INDEX IF NOT EXISTS "notion_images_articleId_idx" 
-      ON "notion_images"("articleId")
-    `);
-
-    // 添加外键约束（如果不存在）
-    await prisma.$executeRawUnsafe(`
-      DO $$ 
-      BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.table_constraints 
-          WHERE constraint_name = 'notion_images_articleId_fkey'
-        ) THEN
-          ALTER TABLE "notion_images" 
-          ADD CONSTRAINT "notion_images_articleId_fkey" 
-          FOREIGN KEY ("articleId") REFERENCES "articles"("id") 
-          ON DELETE SET NULL ON UPDATE CASCADE;
-        END IF;
-      END $$
-    `);
+    // 添加外键约束（单独处理，因为可能已存在）
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "notion_images" 
+        ADD CONSTRAINT "notion_images_articleId_fkey" 
+        FOREIGN KEY ("articleId") REFERENCES "articles"("id") 
+        ON DELETE SET NULL ON UPDATE CASCADE
+      `);
+    } catch (e) {
+      // 外键可能已存在，忽略错误
+      if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2010")) {
+        console.log("Foreign key may already exist:", e);
+      }
+    }
 
     return NextResponse.json({ 
       success: true, 

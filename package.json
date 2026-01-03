@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
-    "build:local": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && tsx scripts/migrate.ts && next build",
+    "build:local": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:migrate": "prisma migrate deploy",
+    "db:migrate": "tsx scripts/migrate.ts",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "sync:notion": "tsx scripts/sync-notion.ts"
