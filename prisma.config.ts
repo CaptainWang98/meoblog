@@ -2,12 +2,39 @@
 // npm install --save-dev prisma dotenv
 import { defineConfig } from "prisma/config";
 
+// 构建 PostgreSQL 连接 URL
+function getDatabaseUrl(): string {
+  // 优先使用 DATABASE_URL
+  if (process.env.DATABASE_URL) {
+    return process.env.DATABASE_URL;
+  }
+  
+  // 从 PG* 环境变量构建 URL（用于 AWS RDS）
+  const host = process.env.PGHOST;
+  const port = process.env.PGPORT || "5432";
+  const user = process.env.PGUSER;
+  const password = process.env.PGPASSWORD;
+  const database = process.env.PGDATABASE || "postgres";
+  const sslMode = process.env.PGSSLMODE;
+  
+  if (host && user && password) {
+    let url = `postgresql://${user}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
+    if (sslMode) {
+      url += `?sslmode=${sslMode}`;
+    }
+    return url;
+  }
+  
+  // 本地开发回退（需要配置环境变量）
+  throw new Error("DATABASE_URL or PGHOST/PGUSER/PGPASSWORD must be set for Prisma CLI");
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"] || "file:./prisma/dev.db",
+    url: getDatabaseUrl(),
   },
 });
