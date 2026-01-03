@@ -7,17 +7,14 @@ import {
   deleteImage 
 } from "../lib/image-storage";
 import { PrismaClient } from "../lib/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import path from "path";
-import { fileURLToPath } from "url";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const adapter = new PrismaBetterSqlite3({
-  url: path.join(__dirname, "../prisma/dev.db"),
+// 创建 PostgreSQL 连接池和 Prisma 客户端
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
 });
-
+const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 interface NotionPage {
